@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>AI Assistant</title>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#1e1e2f;
+color:white;
+display:flex;
+height:100vh;
+}
+
+/* SIDEBAR */
+
+#sidebar{
+width:220px;
+background:#161625;
+display:flex;
+flex-direction:column;
+padding:10px;
+}
+
+#sidebar h2{
+font-size:18px;
+margin-bottom:10px;
+}
+
+.chatItem{
+padding:8px;
+background:#2a2a40;
+margin-bottom:6px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.chatItem:hover{
+background:#3a3a55;
+}
+
+#newChat{
+background:#4CAF50;
+border:none;
+padding:10px;
+color:white;
+border-radius:6px;
+cursor:pointer;
+margin-bottom:10px;
+}
+
+/* MAIN CHAT */
+
+#main{
+flex:1;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+#chat{
+width:520px;
+height:620px;
+background:#2a2a40;
+border-radius:12px;
+display:flex;
+flex-direction:column;
+overflow:hidden;
+}
+
+header{
+background:#1a1a2b;
+padding:15px;
+text-align:center;
+font-size:18px;
+}
+
+.messages{
+flex:1;
+padding:15px;
+overflow-y:auto;
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.message{
+padding:10px 14px;
+border-radius:12px;
+max-width:75%;
+line-height:1.4;
+}
+
+.user{
+background:#4CAF50;
+align-self:flex-end;
+}
+
+.bot{
+background:#3a8dde;
+align-self:flex-start;
+}
+
+.typing{
+opacity:0.7;
+font-style:italic;
+}
+
+/* INPUT */
+
+.inputArea{
+display:flex;
+padding:10px;
+background:#1a1a2b;
+}
+
+input{
+flex:1;
+padding:10px;
+border:none;
+border-radius:8px;
+outline:none;
+}
+
+button{
+margin-left:8px;
+padding:10px 15px;
+border:none;
+background:#4CAF50;
+color:white;
+border-radius:8px;
+cursor:pointer;
+}
+
+/* CODE BLOCK */
+
+pre{
+background:#1a1a2b;
+padding:12px;
+border-radius:8px;
+overflow-x:auto;
+position:relative;
+}
+
+.copyBtn{
+position:absolute;
+top:6px;
+right:6px;
+background:#4CAF50;
+border:none;
+padding:4px 8px;
+color:white;
+border-radius:4px;
+cursor:pointer;
+font-size:12px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="sidebar">
+
+<button id="newChat" onclick="newChat()">New Chat</button>
+
+<h2>History</h2>
+
+<div id="history"></div>
+
+</div>
+
+<div id="main">
+
+<div id="chat">
+
+<header>AI Assistant</header>
+
+<div id="messages" class="messages"></div>
+
+<div class="inputArea">
+
+<input id="input" placeholder="Ask something..." />
+
+<button onclick="send()">Send</button>
+
+<button onclick="stopTyping()">Stop</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let stopGeneration=false;
+let chats=[];
+let currentChat=[];
+
+/* SEND MESSAGE */
+
+async function send(){
+
+const input=document.getElementById("input");
+const text=input.value.trim();
+
+if(!text) return;
+
+addMessage("user",text);
+
+input.value="";
+
+showTyping();
+
+const res=await fetch("/chat",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({message:text})
+});
+
+const data=await res.json();
+
+removeTyping();
+
+const container=document.getElementById("messages");
+
+const msg=document.createElement("div");
+msg.className="message bot";
+
+container.appendChild(msg);
+
+container.scrollTop=container.scrollHeight;
+
+typeText(msg,data.reply);
+
+}
+
+/* TYPING EFFECT */
+
+function typeText(element,text){
+
+let i=0;
+let current="";
+
+stopGeneration=false;
+
+function typing(){
+
+if(stopGeneration) return;
+
+if(i<text.length){
+
+current+=text.charAt(i);
+
+element.innerHTML = marked.parse(current);
+
+element.querySelectorAll("pre code").forEach((block)=>{
+hljs.highlightElement(block);
+
+const btn=document.createElement("button");
+btn.innerText="Copy";
+btn.className="copyBtn";
+
+btn.onclick=()=>{
+navigator.clipboard.writeText(block.innerText);
+btn.innerText="Copied!";
+setTimeout(()=>btn.innerText="Copy",1000);
+};
+
+block.parentElement.appendChild(btn);
+
+});
+
+i++;
+
+setTimeout(typing,8);
+
+}
+
+}
+
+typing();
+
+}
+
+/* ADD MESSAGE */
+
+function addMessage(type,text){
+
+const container=document.getElementById("messages");
+
+const msg=document.createElement("div");
+
+msg.className="message "+type;
+
+msg.innerHTML=marked.parse(text);
+
+container.appendChild(msg);
+
+container.scrollTop=container.scrollHeight;
+
+}
+
+/* STOP BUTTON */
+
+function stopTyping(){
+stopGeneration=true;
+}
+
+/* TYPING INDICATOR */
+
+function showTyping(){
+
+const container=document.getElementById("messages");
+
+const typing=document.createElement("div");
+
+typing.id="typing";
+
+typing.className="message bot typing";
+
+typing.innerText="AI is thinking...";
+
+container.appendChild(typing);
+
+}
+
+function removeTyping(){
+
+const typing=document.getElementById("typing");
+
+if(typing) typing.remove();
+
+}
+
+/* NEW CHAT */
+
+function newChat(){
+
+if(currentChat.length>0){
+
+chats.push(currentChat);
+
+const history=document.getElementById("history");
+
+const item=document.createElement("div");
+
+item.className="chatItem";
+
+item.innerText="Chat "+chats.length;
+
+history.appendChild(item);
+
+}
+
+currentChat=[];
+
+document.getElementById("messages").innerHTML="";
+
+}
+
+</script>
+
+</body>
+
+</html>
