@@ -23,7 +23,7 @@ db.serialize(() => {
 
 /* API KEY */
 
-const API_KEY = "AIzaSyA8T_Ds-Lryz9OdAVh42IMAFMTpfProlbA";
+const API_KEY =  process.env.GEMINI_API_KEY;
 
 /* CHAT API */
 
