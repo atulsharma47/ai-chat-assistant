@@ -1,4 +1,4 @@
-const API_KEY =  process.env.GEMINI_API_KEY;
+const API_KEY =  "AIzaSyCD4z43gI8wvDhrva83VTJu6E3j2uCDU4A";
 
 async function run() {
   const res = await fetch(

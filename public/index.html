@@ -6,6 +6,7 @@
 <title>AI Assistant</title>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <link rel="stylesheet"
 href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -21,6 +22,19 @@ background:#1e1e2f;
 color:white;
 display:flex;
 height:100vh;
+overflow:hidden;
+}
+
+/* 3D background */
+
+#three-bg{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:0;
+pointer-events:none;
 }
 
 /* SIDEBAR */
@@ -31,6 +45,7 @@ background:#161625;
 display:flex;
 flex-direction:column;
 padding:10px;
+z-index:2;
 }
 
 #sidebar h2{
@@ -67,6 +82,7 @@ flex:1;
 display:flex;
 justify-content:center;
 align-items:center;
+z-index:2;
 }
 
 #chat{
@@ -172,6 +188,8 @@ font-size:12px;
 
 <body>
 
+<div id="three-bg"></div>
+
 <div id="sidebar">
 
 <button id="newChat" onclick="newChat()">New Chat</button>
@@ -206,11 +224,209 @@ font-size:12px;
 
 <script>
 
+/* ===========================
+   THREE.JS BACKGROUND ENGINE
+=========================== */
+
+let scene, camera, renderer, particles;
+let currentEffect="none";
+
+function init3D(){
+
+scene = new THREE.Scene();
+
+camera = new THREE.PerspectiveCamera(
+75,
+window.innerWidth/window.innerHeight,
+0.1,
+1000
+);
+
+renderer = new THREE.WebGLRenderer({alpha:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+
+document
+.getElementById("three-bg")
+.appendChild(renderer.domElement);
+
+camera.position.z = 5;
+
+animate();
+
+}
+
+function animate(){
+
+requestAnimationFrame(animate);
+
+if(particles){
+
+if(currentEffect==="space"){
+particles.rotation.y+=0.0005;
+particles.rotation.x+=0.0002;
+}
+
+if(currentEffect==="rain"){
+particles.rotation.x+=0.003;
+}
+
+if(currentEffect==="snow"){
+particles.rotation.y+=0.001;
+}
+
+}
+
+renderer.render(scene,camera);
+
+}
+
+/* ===========================
+   EFFECTS
+=========================== */
+
+function spaceEffect(){
+
+scene.clear();
+
+const geometry=new THREE.BufferGeometry();
+const vertices=[];
+const colors=[];
+
+for(let i=0;i<3000;i++){
+
+vertices.push(
+THREE.MathUtils.randFloatSpread(200),
+THREE.MathUtils.randFloatSpread(200),
+THREE.MathUtils.randFloatSpread(200)
+);
+
+const color=new THREE.Color();
+color.setHSL(0.6+Math.random()*0.2,1,0.8);
+
+colors.push(color.r,color.g,color.b);
+
+}
+
+geometry.setAttribute(
+'position',
+new THREE.Float32BufferAttribute(vertices,3)
+);
+
+geometry.setAttribute(
+'color',
+new THREE.Float32BufferAttribute(colors,3)
+);
+
+const material=new THREE.PointsMaterial({
+size:0.7,
+vertexColors:true
+});
+
+particles=new THREE.Points(geometry,material);
+
+scene.add(particles);
+
+currentEffect="space";
+
+}
+
+function rainEffect(){
+
+scene.clear();
+
+const geometry=new THREE.BufferGeometry();
+const vertices=[];
+
+for(let i=0;i<4000;i++){
+
+vertices.push(
+Math.random()*200-100,
+Math.random()*200-100,
+Math.random()*200-100
+);
+
+}
+
+geometry.setAttribute(
+'position',
+new THREE.Float32BufferAttribute(vertices,3)
+);
+
+const material=new THREE.PointsMaterial({
+color:0x66ccff,
+size:0.2
+});
+
+particles=new THREE.Points(geometry,material);
+
+scene.add(particles);
+
+currentEffect="rain";
+
+}
+
+function snowEffect(){
+
+scene.clear();
+
+const geometry=new THREE.BufferGeometry();
+const vertices=[];
+
+for(let i=0;i<3000;i++){
+
+vertices.push(
+Math.random()*200-100,
+Math.random()*200-100,
+Math.random()*200-100
+);
+
+}
+
+geometry.setAttribute(
+'position',
+new THREE.Float32BufferAttribute(vertices,3)
+);
+
+const material=new THREE.PointsMaterial({
+color:0xffffff,
+size:0.7
+});
+
+particles=new THREE.Points(geometry,material);
+
+scene.add(particles);
+
+currentEffect="snow";
+
+}
+
+function triggerEffect(text){
+
+const lower=text.toLowerCase();
+
+if(lower.includes("space")||lower.includes("star")){
+spaceEffect();
+}
+
+if(lower.includes("rain")||lower.includes("water")){
+rainEffect();
+}
+
+if(lower.includes("snow")){
+snowEffect();
+}
+
+}
+
+init3D();
+
+/* ===========================
+   CHAT LOGIC
+=========================== */
+
 let stopGeneration=false;
 let chats=[];
 let currentChat=[];
-
-/* SEND MESSAGE */
 
 async function send(){
 
@@ -218,6 +434,8 @@ const input=document.getElementById("input");
 const text=input.value.trim();
 
 if(!text) return;
+
+triggerEffect(text);
 
 addMessage("user",text);
 
@@ -250,13 +468,12 @@ typeText(msg,data.reply);
 
 }
 
-/* TYPING EFFECT */
+/* typing animation */
 
 function typeText(element,text){
 
 let i=0;
 let current="";
-
 stopGeneration=false;
 
 function typing(){
@@ -267,9 +484,10 @@ if(i<text.length){
 
 current+=text.charAt(i);
 
-element.innerHTML = marked.parse(current);
+element.innerHTML=marked.parse(current);
 
 element.querySelectorAll("pre code").forEach((block)=>{
+
 hljs.highlightElement(block);
 
 const btn=document.createElement("button");
@@ -298,8 +516,6 @@ typing();
 
 }
 
-/* ADD MESSAGE */
-
 function addMessage(type,text){
 
 const container=document.getElementById("messages");
@@ -316,13 +532,9 @@ container.scrollTop=container.scrollHeight;
 
 }
 
-/* STOP BUTTON */
-
 function stopTyping(){
 stopGeneration=true;
 }
-
-/* TYPING INDICATOR */
 
 function showTyping(){
 
@@ -331,9 +543,7 @@ const container=document.getElementById("messages");
 const typing=document.createElement("div");
 
 typing.id="typing";
-
 typing.className="message bot typing";
-
 typing.innerText="AI is thinking...";
 
 container.appendChild(typing);
@@ -348,8 +558,6 @@ if(typing) typing.remove();
 
 }
 
-/* NEW CHAT */
-
 function newChat(){
 
 if(currentChat.length>0){
@@ -359,9 +567,7 @@ chats.push(currentChat);
 const history=document.getElementById("history");
 
 const item=document.createElement("div");
-
 item.className="chatItem";
-
 item.innerText="Chat "+chats.length;
 
 history.appendChild(item);
@@ -369,7 +575,6 @@ history.appendChild(item);
 }
 
 currentChat=[];
-
 document.getElementById("messages").innerHTML="";
 
 }
@@ -377,5 +582,4 @@ document.getElementById("messages").innerHTML="";
 </script>
 
 </body>
-
 </html>

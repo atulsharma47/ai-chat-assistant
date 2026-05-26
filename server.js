@@ -2,7 +2,6 @@ const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
-const PORT = 3000;
 
 app.use(express.json());
 app.use(express.static("public"));
@@ -23,7 +22,7 @@ db.serialize(() => {
 
 /* API KEY */
 
-const API_KEY =  process.env.GEMINI_API_KEY;
+const API_KEY = "AIzaSyCD4z43gI8wvDhrva83VTJu6E3j2uCDU4A";
 
 /* CHAT API */
 
@@ -91,6 +90,8 @@ app.post("/chat", async (req, res) => {
 
 /* SERVER */
 
+const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
