@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 
@@ -22,13 +24,24 @@ db.serialize(() => {
 
 /* API KEY */
 
-const API_KEY = "AIzaSyCD4z43gI8wvDhrva83VTJu6E3j2uCDU4A";
+const API_KEY = process.env.GEMINI_API_KEY;
+
+if (!API_KEY) {
+  console.error("GEMINI_API_KEY is missing in .env file");
+  process.exit(1);
+}
 
 /* CHAT API */
 
 app.post("/chat", async (req, res) => {
 
   const userMessage = req.body.message;
+
+  if (!userMessage) {
+    return res.status(400).json({
+      reply: "Message is required"
+    });
+  }
 
   db.run(
     "INSERT INTO messages(user,message) VALUES (?,?)",
@@ -57,16 +70,18 @@ app.post("/chat", async (req, res) => {
 
     const data = await response.json();
 
-    console.log(JSON.stringify(data, null, 2));
-
     let reply = "No response from AI.";
 
-    if (data.candidates && data.candidates.length > 0) {
-      const parts = data.candidates[0].content.parts;
+    if (
+      data.candidates &&
+      data.candidates.length > 0 &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts
+    ) {
 
-      if (parts && parts.length > 0) {
-        reply = parts.map(p => p.text || "").join("");
-      }
+      reply = data.candidates[0].content.parts
+        .map(part => part.text || "")
+        .join("");
     }
 
     db.run(
@@ -80,7 +95,7 @@ app.post("/chat", async (req, res) => {
 
     console.error("AI ERROR:", err);
 
-    res.json({
+    res.status(500).json({
       reply: "AI error occurred. Check server console."
     });
 
