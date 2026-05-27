@@ -1,13 +1,25 @@
-const API_KEY =  "AIzaSyCD4z43gI8wvDhrva83VTJu6E3j2uCDU4A";
+require("dotenv").config();
+
+const API_KEY = process.env.GEMINI_API_KEY;
 
 async function run() {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models?key=${API_KEY}`
-  );
 
-  const data = await res.json();
+  try {
 
-  console.log(JSON.stringify(data, null, 2));
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models?key=${API_KEY}`
+    );
+
+    const data = await res.json();
+
+    console.log(JSON.stringify(data, null, 2));
+
+  } catch (err) {
+
+    console.error(err);
+
+  }
+
 }
 
 run();
